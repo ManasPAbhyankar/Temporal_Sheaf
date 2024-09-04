@@ -150,13 +150,17 @@ class TemporalLocalConcatSheafLearnerVariant(SheafLearner):
         else:
             raise ValueError(f"Unsupported act {sheaf_act}")
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index,edge_timestamps):
         row, col = edge_index
+        
+        edge_time_embeddings = self.time_encoder(edge_timestamps)
 
         x_row = torch.index_select(x, dim=0, index=row)
         x_col = torch.index_select(x, dim=0, index=col)
-        x_cat = torch.cat([x_row, x_col], dim=-1)
-        x_cat = x_cat.reshape(-1, self.d, self.hidden_channels * 2).sum(dim=1)
+        x_cat = torch.cat([x_row, x_col,edge_timestamps], dim=-1)
+        x_cat = x_cat.reshape(-1, self.d, self.hidden_channels * 2 + self.d)
+        
+        
 
         x_cat = self.linear1(x_cat)
 
