@@ -354,6 +354,8 @@ class DiscreteTemporalGeneralSheafDiffusion(SheafDiffusion):
             self.graph_size, edge_index, d=self.d, add_lp=self.add_lp, add_hp=self.add_hp,
             normalised=self.normalised, deg_normalised=self.deg_normalised)
         
+        #Check if laplacian builder can be sued as it is for stochastically sampled neighbours
+        
         
         
         
