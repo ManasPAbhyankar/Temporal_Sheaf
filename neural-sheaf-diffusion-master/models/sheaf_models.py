@@ -151,6 +151,13 @@ class TemporalLocalConcatSheafLearnerVariant(SheafLearner):
             raise ValueError(f"Unsupported act {sheaf_act}")
 
     def forward(self, x, edge_index,edge_timestamps):
+        
+        
+        #Add the messages somehow ...............
+        #################################################
+        #################################################
+        #################################################
+        #################################################
         row, col = edge_index
         
         edge_time_embeddings = self.time_encoder(edge_timestamps)

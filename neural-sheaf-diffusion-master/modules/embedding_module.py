@@ -80,7 +80,7 @@ class EmbeddingModule(nn.Module):
       }
       
       
-      
+      self.device = device
       self.model = DiscreteGeneralSheafDiffusionVariant(args)  ###FIGURE OUT PARAMETERS TO BE PASSED  (Edge index and args required......)     
       
       
@@ -92,6 +92,9 @@ class EmbeddingModule(nn.Module):
     
     
     #Create a temporal version of local concat sheaf learner
+
+
+    node_embeddings = self.model(memory[source_nodes,:])
         
         
         
