@@ -12,7 +12,7 @@ from torch_geometric.nn.models.tgn import (
     LastNeighborLoader,
 )
 
-from modules.decoder import NodePredictor
+from decoder import MultPerceptron
 from modules.emb_module import GraphAttentionEmbedding
 from tgb.nodeproppred.dataset_pyg import PyGNodePropPredDataset
 from tgb.nodeproppred.evaluate import Evaluator
