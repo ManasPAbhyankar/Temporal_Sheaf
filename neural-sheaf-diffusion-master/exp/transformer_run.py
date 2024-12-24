@@ -94,7 +94,7 @@ def run_exp(args, dataset, model_cls, fold):
                 f'fold{fold}_tmp_test_acc': tmp_test_acc,
                 f'fold{fold}_tmp_test_loss': tmp_test_loss,
             }
-            wandb.log(res_dict, step=epoch)
+            #wandb.log(res_dict, step=epoch)
 
         new_best_trigger = val_acc > best_val_acc if args['stop_strategy'] == 'acc' else val_loss < best_val_loss
         if new_best_trigger:
@@ -122,14 +122,132 @@ def run_exp(args, dataset, model_cls, fold):
             L_abs_avg = model.sheaf_learners[i].L.detach().abs().mean().item()
             print(f"Laplacian {i}: Max: {L_max:.4f}, Min: {L_min:.4f}, Avg: {L_avg:.4f}, Abs avg: {L_abs_avg:.4f}")
 
-        with np.printoptions(precision=3, suppress=True):
-            for i in range(0, args['layers']):
-                print(f"Epsilons {i}: {model.epsilons[i].detach().cpu().numpy().flatten()}")
+        # with np.printoptions(precision=3, suppress=True):
+        #     for i in range(0, args['layers']):
+        #         print(f"Epsilons {i}: {model.epsilons[i].detach().cpu().numpy().flatten()}")
 
-    wandb.log({'best_test_acc': test_acc, 'best_val_acc': best_val_acc, 'best_epoch': best_epoch})
+    #wandb.log({'best_test_acc': test_acc, 'best_val_acc': best_val_acc, 'best_epoch': best_epoch})
     keep_running = False if test_acc < args['min_acc'] else True
 
     return test_acc, best_val_acc, keep_running
+
+
+
+def run_hyperopt():
+    """TODO: Add Raytune hyperopt lines
+       TODO: Add best model returner in folds code"""
+    
+    
+    
+    
+    args = {
+    'add_hp':False,
+    'add_lp':False,
+    'd':4 ,
+    'dataset':'texas', 
+    'dropout':0 ,
+    'early_stopping':100, 
+    'epochs':1 ,
+    'folds':10 ,
+    'hidden_channels':32, 
+    'input_dropout':0.7 ,
+    'layers':2,
+    'num_attention_layers':5,
+    'num_heads':5,
+    'lr':0.01 ,
+    'model':"GeneralSheafTransformer", 
+    'second_linear':False,
+    'sheaf_decay':0.0012638885974822734, 
+    'weight_decay':0.0002969905682317406, 
+    'left_weights':True ,
+    'right_weights':True ,
+    'use_act':True ,
+    'sheaf_act':"tanh",
+    'normalised':True, 
+    'edge_weights':True, 
+    'stop_strategy':'acc',
+    'deg_normalised':False,
+    'linear':False,
+    'orth':'householder',
+    'sparse_learner':False,
+    'seed':43,
+    'cuda':0,
+    'evectors':0,
+    'entity':None,
+    'min_acc':0.0,
+    }
+    #print(args['dataset'])
+    #print(args.dataset)
+    
+
+
+    # repo = git.Repo(search_parent_directories=True)
+    # sha = repo.head.object.hexsha
+
+    if args["model"] == 'DiagSheafODE':
+        model_cls = DiagSheafDiffusion
+    elif args["model"] == 'BundleSheafODE':
+        model_cls = BundleSheafDiffusion
+    elif args["model"]== 'GeneralSheafODE':
+        model_cls = GeneralSheafDiffusion
+    elif args["model"] == 'DiagSheaf':
+        model_cls = DiscreteDiagSheafDiffusion
+    elif args["model"] == 'BundleSheaf':
+        model_cls = DiscreteBundleSheafDiffusion
+    elif args["model"] == 'GeneralSheaf':
+        model_cls = DiscreteGeneralSheafDiffusion
+    elif args["model"] == 'GeneralSheafTransformer':
+        model_cls = GeneralSheafTransformer
+    else:
+        raise ValueError(f'Unknown model {args["model"]}')
+
+    # model_cls = GeneralSheafTransformer
+
+    dataset = get_dataset(args["dataset"])
+    if args["evectors"] > 0:
+        dataset = append_top_k_evectors(dataset, args["evectors"])
+
+    # Add extra arguments
+    #args.sha = sha
+    args["graph_size"] = dataset[0].x.size(0)
+    args["input_dim"] = dataset.num_features
+    args["output_dim"] = dataset.num_classes
+    args["device"] = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
+    assert args["normalised"] or args["deg_normalised"]
+    # if args.sheaf_decay is None:
+    #     args.sheaf_decay = args.weight_decay
+    
+    if "sheaf_decay" not in args.keys():
+        args["sheaf_decay"] = args["weight_decay"]
+
+    # Set the seed for everything
+    torch.manual_seed(args["seed"])
+    torch.cuda.manual_seed(args["seed"])
+    torch.cuda.manual_seed_all(args["seed"])
+    np.random.seed(args["seed"])
+    random.seed(args["seed"])
+
+    results = []
+    #print(f"Running with wandb account: {args['entity']}")
+    print(args)
+    #wandb.init(project="sheaf", config=vars(args), entity=args["entity"])
+
+    for fold in tqdm(range(args["folds"])):
+        test_acc, best_val_acc, keep_running = run_exp(args, dataset, model_cls, fold)
+        results.append([test_acc, best_val_acc])
+        if not keep_running:
+            break
+
+    test_acc_mean, val_acc_mean = np.mean(results, axis=0) * 100
+    test_acc_std = np.sqrt(np.var(results, axis=0)[0]) * 100
+
+    #wandb_results = {'test_acc': test_acc_mean, 'val_acc': val_acc_mean, 'test_acc_std': test_acc_std}
+    #wandb.log(wandb_results)
+    #wandb.finish()
+
+    model_name = args["model"] if args["evectors"] == 0 else f"{args['model']}+LP{args['evectors']}"
+    #print(f'{model_name} on {args.dataset} | SHA: {sha}')
+    print(f'Test acc: {test_acc_mean:.4f} +/- {test_acc_std:.4f} | Val acc: {val_acc_mean:.4f}')
 
 
 if __name__ == '__main__':
@@ -176,74 +294,89 @@ if __name__ == '__main__':
     'folds':10 ,
     'hidden_channels':32, 
     'input_dropout':0.7 ,
-    'num_attention_layers':5, 
+    'layers':2,
+    'num_attention_layers':5,
+    'num_heads':5,
     'lr':0.01 ,
-    'model':GeneralSheafTransformer, 
+    'model':"GeneralSheafTransformer", 
     'second_linear':False,
     'sheaf_decay':0.0012638885974822734, 
     'weight_decay':0.0002969905682317406, 
     'left_weights':True ,
     'right_weights':True ,
     'use_act':True ,
+    'sheaf_act':"tanh",
     'normalised':True, 
     'edge_weights':True, 
     'stop_strategy':'acc',
+    'deg_normalised':False,
+    'linear':False,
+    'orth':'householder',
+    'sparse_learner':False,
+    'seed':43,
+    'cuda':0,
+    'evectors':0,
+    'entity':None,
+    'min_acc':0.0,
     }
-    print(args['dataset'])
-    print(args.dataset)
+    #print(args['dataset'])
+    #print(args.dataset)
     
 
 
-    #repo = git.Repo(search_parent_directories=True)
-    #sha = repo.head.object.hexsha
+    # repo = git.Repo(search_parent_directories=True)
+    # sha = repo.head.object.hexsha
 
-    # if args.model == 'DiagSheafODE':
-    #     model_cls = DiagSheafDiffusion
-    # elif args.model == 'BundleSheafODE':
-    #     model_cls = BundleSheafDiffusion
-    # elif args.model == 'GeneralSheafODE':
-    #     model_cls = GeneralSheafDiffusion
-    # elif args.model == 'DiagSheaf':
-    #     model_cls = DiscreteDiagSheafDiffusion
-    # elif args.model == 'BundleSheaf':
-    #     model_cls = DiscreteBundleSheafDiffusion
-    # elif args.model == 'GeneralSheaf':
-    #     model_cls = DiscreteGeneralSheafDiffusion
-    # elif args.model == 'GeneralSheafTransformer':
-    #     model_cls = GeneralSheafTransformer
-    # else:
-    #     raise ValueError(f'Unknown model {args.model}')
+    if args["model"] == 'DiagSheafODE':
+        model_cls = DiagSheafDiffusion
+    elif args["model"] == 'BundleSheafODE':
+        model_cls = BundleSheafDiffusion
+    elif args["model"]== 'GeneralSheafODE':
+        model_cls = GeneralSheafDiffusion
+    elif args["model"] == 'DiagSheaf':
+        model_cls = DiscreteDiagSheafDiffusion
+    elif args["model"] == 'BundleSheaf':
+        model_cls = DiscreteBundleSheafDiffusion
+    elif args["model"] == 'GeneralSheaf':
+        model_cls = DiscreteGeneralSheafDiffusion
+    elif args["model"] == 'GeneralSheafTransformer':
+        model_cls = GeneralSheafTransformer
+    else:
+        raise ValueError(f'Unknown model {args["model"]}')
 
-    model_cls = GeneralSheafTransformer
+    # model_cls = GeneralSheafTransformer
 
-    dataset = get_dataset(args.dataset)
-    if args.evectors > 0:
-        dataset = append_top_k_evectors(dataset, args.evectors)
+    dataset = get_dataset(args["dataset"])
+    if args["evectors"] > 0:
+        dataset = append_top_k_evectors(dataset, args["evectors"])
 
     # Add extra arguments
     #args.sha = sha
-    args.graph_size = dataset[0].x.size(0)
-    args.input_dim = dataset.num_features
-    args.output_dim = dataset.num_classes
-    args.device = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
-    assert args.normalised or args.deg_normalised
-    if args.sheaf_decay is None:
-        args.sheaf_decay = args.weight_decay
+    args["graph_size"] = dataset[0].x.size(0)
+    args["input_dim"] = dataset.num_features
+    args["output_dim"] = dataset.num_classes
+    args["device"] = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
+    assert args["normalised"] or args["deg_normalised"]
+    # if args.sheaf_decay is None:
+    #     args.sheaf_decay = args.weight_decay
+    
+    if "sheaf_decay" not in args.keys():
+        args["sheaf_decay"] = args["weight_decay"]
 
     # Set the seed for everything
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    np.random.seed(args.seed)
-    random.seed(args.seed)
+    torch.manual_seed(args["seed"])
+    torch.cuda.manual_seed(args["seed"])
+    torch.cuda.manual_seed_all(args["seed"])
+    np.random.seed(args["seed"])
+    random.seed(args["seed"])
 
     results = []
-    print(f"Running with wandb account: {args.entity}")
+    #print(f"Running with wandb account: {args['entity']}")
     print(args)
-    wandb.init(project="sheaf", config=vars(args), entity=args.entity)
+    #wandb.init(project="sheaf", config=vars(args), entity=args["entity"])
 
-    for fold in tqdm(range(args.folds)):
-        test_acc, best_val_acc, keep_running = run_exp(wandb.config, dataset, model_cls, fold)
+    for fold in tqdm(range(args["folds"])):
+        test_acc, best_val_acc, keep_running = run_exp(args, dataset, model_cls, fold)
         results.append([test_acc, best_val_acc])
         if not keep_running:
             break
@@ -251,10 +384,13 @@ if __name__ == '__main__':
     test_acc_mean, val_acc_mean = np.mean(results, axis=0) * 100
     test_acc_std = np.sqrt(np.var(results, axis=0)[0]) * 100
 
-    wandb_results = {'test_acc': test_acc_mean, 'val_acc': val_acc_mean, 'test_acc_std': test_acc_std}
-    wandb.log(wandb_results)
-    wandb.finish()
+    #wandb_results = {'test_acc': test_acc_mean, 'val_acc': val_acc_mean, 'test_acc_std': test_acc_std}
+    #wandb.log(wandb_results)
+    #wandb.finish()
 
-    model_name = args.model if args.evectors == 0 else f"{args.model}+LP{args.evectors}"
+    model_name = args["model"] if args["evectors"] == 0 else f"{args['model']}+LP{args['evectors']}"
     #print(f'{model_name} on {args.dataset} | SHA: {sha}')
     print(f'Test acc: {test_acc_mean:.4f} +/- {test_acc_std:.4f} | Val acc: {val_acc_mean:.4f}')
+    
+    
+    

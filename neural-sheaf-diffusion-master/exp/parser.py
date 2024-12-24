@@ -88,6 +88,8 @@ def get_parser():
     parser.add_argument("--max_test_steps", type=int, default=100,
                         help="Maximum number steps for the dopri5Early test integrator. "
                              "used if getting OOM errors at test time")
+    
+    #Sheaf Transformer args
     parser.add_argument("--num_attention_layers", type=int, default=1,
                         help="Number of attention layers in Sheaf Transformer")
     parser.add_argument("--num_heads", type=int, default=1,
