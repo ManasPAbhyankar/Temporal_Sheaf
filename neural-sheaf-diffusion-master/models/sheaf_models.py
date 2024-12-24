@@ -115,78 +115,79 @@ class LocalConcatSheafLearnerVariant(SheafLearner):
 
 
 
-class TemporalLocalConcatSheafLearnerVariant(SheafLearner):
-    """Learns a sheaf by concatenating the local node features and passing them through a linear layer + activation. And add time2vec temporal information"""
+# class TemporalLocalConcatSheafLearnerVariant(SheafLearner):
+#     """Learns a sheaf by concatenating the local node features and passing them through a linear layer + activation. And add time2vec temporal information"""
 
-    def __init__(self, d: int, hidden_channels: int, out_shape: Tuple[int, ...], sheaf_act="tanh"):
-        super(LocalConcatSheafLearnerVariant, self).__init__()
-        assert len(out_shape) in [1, 2]
-        self.out_shape = out_shape
-        self.d = d
-        self.hidden_channels = hidden_channels
-        self.linear1 = torch.nn.Linear(hidden_channels * 2, int(np.prod(out_shape)), bias=False)
-        # self.linear2 = torch.nn.Linear(self.d, 1, bias=False)
+#     def __init__(self, d: int, hidden_channels: int, out_shape: Tuple[int, ...], sheaf_act="tanh"):
+#         super(LocalConcatSheafLearnerVariant, self).__init__()
+#         assert len(out_shape) in [1, 2]
+#         self.out_shape = out_shape
+#         self.d = d
+#         self.hidden_channels = hidden_channels
+#         self.linear1 = torch.nn.Linear(hidden_channels * 2, int(np.prod(out_shape)), bias=False)
+#         # self.linear2 = torch.nn.Linear(self.d, 1, bias=False)
 
-        # std1 = 1.414 * math.sqrt(2. / (hidden_channels * 2 + 1))
-        # std2 = 1.414 * math.sqrt(2. / (d + 1))
-        #
-        # nn.init.normal_(self.linear1.weight, 0.0, std1)
-        # nn.init.normal_(self.linear2.weight, 0.0, std2)
+#         # std1 = 1.414 * math.sqrt(2. / (hidden_channels * 2 + 1))
+#         # std2 = 1.414 * math.sqrt(2. / (d + 1))
+#         #
+#         # nn.init.normal_(self.linear1.weight, 0.0, std1)
+#         # nn.init.normal_(self.linear2.weight, 0.0, std2)
         
         
-        ########################## ADD TIME ENCODING #################################################################################################
+#         ########################## ADD TIME ENCODING #################################################################################################
         
-        self.time_encoder = TimeEncode(d)
+#         self.time_encoder = TimeEncode(d)
         
         
-        ########################################################################################################################################
+#         ########################################################################################################################################
 
-        if sheaf_act == 'id':
-            self.act = lambda x: x
-        elif sheaf_act == 'tanh':
-            self.act = torch.tanh
-        elif sheaf_act == 'elu':
-            self.act = F.elu
-        else:
-            raise ValueError(f"Unsupported act {sheaf_act}")
+#         if sheaf_act == 'id':
+#             self.act = lambda x: x
+#         elif sheaf_act == 'tanh':
+#             self.act = torch.tanh
+#         elif sheaf_act == 'elu':
+#             self.act = F.elu
+#         else:
+#             raise ValueError(f"Unsupported act {sheaf_act}")
 
-    def forward(self, x, edge_index,edge_timestamps):
+#     def forward(self, x, edge_index,edge_timestamps):
         
         
-        #Add the messages somehow ...............
-        #################################################
-        #################################################
-        #################################################
-        #################################################
-        row, col = edge_index
+#         #Add the messages somehow ...............
+#         #################################################
+#         #################################################
+#         #################################################
+#         #################################################
+#         row, col = edge_index
         
-        edge_time_embeddings = self.time_encoder(edge_timestamps)
+#         edge_time_embeddings = self.time_encoder(edge_timestamps)
 
-        x_row = torch.index_select(x, dim=0, index=row)
-        x_col = torch.index_select(x, dim=0, index=col)
-        x_cat = torch.cat([x_row, x_col,edge_timestamps], dim=-1)
-        x_cat = x_cat.reshape(-1, self.d, self.hidden_channels * 2 + self.d)
+#         x_row = torch.index_select(x, dim=0, index=row)
+#         x_col = torch.index_select(x, dim=0, index=col)
+#         x_cat = torch.cat([x_row, x_col,edge_timestamps], dim=-1)
+#         x_cat = x_cat.reshape(-1, self.d, self.hidden_channels * 2 + self.d)
         
         
 
-        x_cat = self.linear1(x_cat)
+#         x_cat = self.linear1(x_cat)
 
-        # x_cat = x_cat.t().reshape(-1, self.d)
-        # x_cat = self.linear2(x_cat)
-        # x_cat = x_cat.reshape(-1, edge_index.size(1)).t()
+#         # x_cat = x_cat.t().reshape(-1, self.d)
+#         # x_cat = self.linear2(x_cat)
+#         # x_cat = x_cat.reshape(-1, edge_index.size(1)).t()
 
-        maps = self.act(x_cat)
+#         maps = self.act(x_cat)
 
-        if len(self.out_shape) == 2:
-            return maps.view(-1, self.out_shape[0], self.out_shape[1])
-        else:
-            return maps.view(-1, self.out_shape[0])
+#         if len(self.out_shape) == 2:
+#             return maps.view(-1, self.out_shape[0], self.out_shape[1])
+#         else:
+#             return maps.view(-1, self.out_shape[0])
         
         
         
         
         
         
+
         
         
         

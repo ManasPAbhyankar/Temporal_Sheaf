@@ -19,6 +19,7 @@ from exp.parser import get_parser
 from models.positional_encodings import append_top_k_evectors
 from models.cont_models import DiagSheafDiffusion, BundleSheafDiffusion, GeneralSheafDiffusion
 from models.disc_models import DiscreteDiagSheafDiffusion, DiscreteBundleSheafDiffusion, DiscreteGeneralSheafDiffusion
+from models.sheaf_transformers import GeneralSheafTransformer
 from utils.heterophilic import get_dataset, get_fixed_splits
 
 
@@ -119,6 +120,8 @@ def run_exp(args, dataset, model_cls, fold):
     if "ODE" not in args['model']:
         # Debugging for discrete models
         for i in range(len(model.sheaf_learners)):
+            print(i)
+            print(model.sheaf_learners[i].L)
             L_max = model.sheaf_learners[i].L.detach().max().item()
             L_min = model.sheaf_learners[i].L.detach().min().item()
             L_avg = model.sheaf_learners[i].L.detach().mean().item()
@@ -154,6 +157,8 @@ if __name__ == '__main__':
         model_cls = DiscreteBundleSheafDiffusion
     elif args.model == 'GeneralSheaf':
         model_cls = DiscreteGeneralSheafDiffusion
+    elif args.model == 'GeneralSheafTransformer':
+        model_cls = GeneralSheafTransformer
     else:
         raise ValueError(f'Unknown model {args.model}')
 

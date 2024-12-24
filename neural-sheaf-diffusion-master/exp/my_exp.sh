@@ -1,19 +1,20 @@
 #!/bin/sh
 
-python -m exp.run \
+python -m run \
     --add_hp=False \
-    --add_lp=True \
+    --add_lp=False \
     --d=4 \
     --dataset=texas \
     --dropout=0 \
     --early_stopping=100 \
-    --epochs=1 \
+    --epochs=100 \
     --folds=10 \
     --hidden_channels=32 \
     --input_dropout=0.7 \
-    --layers=5 \
-    --lr=0.01 \
-    --model=DiagSheaf \
+    --num_attention_layers=5 \
+    --num_heads=5\
+    --lr=0.001 \
+    --model=GeneralSheafTransformer \
     --second_linear=True \
     --sheaf_decay=0.0012638885974822734 \
     --weight_decay=0.0002969905682317406 \
@@ -23,4 +24,3 @@ python -m exp.run \
     --normalised=True \
     --edge_weights=True \
     --stop_strategy=acc \
-    --entity="${ENTITY}" 

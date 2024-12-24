@@ -61,7 +61,7 @@ def get_parser():
     parser.add_argument('--cuda', type=int, default=0)
     parser.add_argument('--folds', type=int, default=10)
     parser.add_argument('--model', type=str, choices=['DiagSheaf', 'BundleSheaf', 'GeneralSheaf', 'DiagSheafODE',
-                                                      'BundleSheafODE', 'GeneralSheafODE'], default=None)
+                                                      'BundleSheafODE', 'GeneralSheafODE','GeneralSheafTransformer'], default=None)
     parser.add_argument('--entity', type=str, default=None)
     parser.add_argument('--evectors', type=int, default=0, help="Number of Laplacian PE eigenvectors to use.")
 
@@ -88,4 +88,9 @@ def get_parser():
     parser.add_argument("--max_test_steps", type=int, default=100,
                         help="Maximum number steps for the dopri5Early test integrator. "
                              "used if getting OOM errors at test time")
+    parser.add_argument("--num_attention_layers", type=int, default=1,
+                        help="Number of attention layers in Sheaf Transformer")
+    parser.add_argument("--num_heads", type=int, default=1,
+                        help="Number of attention heads in each attention layer")
+    
     return parser
