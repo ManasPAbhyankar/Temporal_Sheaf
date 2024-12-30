@@ -147,9 +147,9 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
         k = self.k_linear(x)
         v = self.v_linear(x)
 
-        q = torch.cat(q.split(self.num_heads,dim = 1),dim = 0)
-        k = torch.cat(k.split(self.num_heads,dim = 1),dim = 0)
-        v = torch.cat(v.split(self.num_heads,dim = 1),dim = 0) # To put the Qs,Ks and Vs of different attention heads one after the other
+        q = torch.cat(q.split(q.size(1)//self.num_heads,dim = 1),dim = 0)
+        k = torch.cat(k.split(k.size(1)//self.num_heads,dim = 1),dim = 0)
+        v = torch.cat(v.split(v.size(1)//self.num_heads,dim = 1),dim = 0) # To put the Qs,Ks and Vs of different attention heads one after the other
 
         arr = torch.arange(self.num_heads)*self.graph_size
 
@@ -159,8 +159,8 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
         arr = torch.cat(list(arr),dim = 1)
 
         new_edge_index = edge_index.tile(self.num_heads)
-        print(new_edge_index.shape)
-        print(edge_index.shape)
+        #print(new_edge_index.shape)
+        #print(edge_index.shape)
 
 
         new_edge_index = new_edge_index + arr #Got indices of all attention matrices in a single matrix (Imagine them as blocks along diagonal of a much larger matrix)
@@ -169,7 +169,7 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
         q_row = torch.index_select(q,dim = 0,index = row)
         k_col = torch.index_select(k,dim = 0,index = col)
         attention_matrix = torch.sum(q_row * k_col,dim  = -1)/math.sqrt(self.hidden_dim)#Got sparse attention matrix values here for all heads
-        print(attention_matrix.shape)
+        #print(attention_matrix.shape)
 
     
         
@@ -209,16 +209,19 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
 
         kroneckered_attention_matrix = sparse_kron(attention_matrix,torch.ones(self.d,self.d).to_sparse())
 
-        print(kroneckered_attention_matrix.size(0),kroneckered_attention_matrix.size(1))
-        print(kroneckered_sheaflap.size(0),kroneckered_sheaflap.size(1))
-        print(v.size(0),v.size(1))
+        #print(kroneckered_attention_matrix.size(0),kroneckered_attention_matrix.size(1))
+        #print(kroneckered_sheaflap.size(0),kroneckered_sheaflap.size(1))
+        #print(v.size(0),v.size(1))
 
         x = torch_sparse.spmm(kroneckered_attention_matrix.indices(),kroneckered_attention_matrix.values(),
                             kroneckered_attention_matrix.size(0),kroneckered_attention_matrix.size(1),
                             torch_sparse.spmm(kroneckered_sheaflap.indices(),kroneckered_sheaflap.values(),
                             kroneckered_sheaflap.size(0),kroneckered_sheaflap.size(1),v))
         
-        x = x.reshape((self.graph_size,-1))
+        #x = x.reshape((self.graph_size,-1)) #Rehsaping looks wrong : Corresponding xs for each node must be concatenated
+
+        x = torch.cat(x.split(x.size(0)//self.num_heads,dim = 0),dim = 1)
+        x = x.reshape(self.graph_size,-1)
         x = self.final_linear(x)
 
         x = x.reshape((self.graph_size*self.d,-1))
@@ -258,14 +261,14 @@ class SheafTransformerBase(nn.Module):
         self.hidden_dim = args['hidden_channels'] * self.final_d
         self.device = args['device']
         self.graph_size = args['graph_size']
-        self.layers = args['layers']
+        #self.layers = args['layers']
         self.normalised = args['normalised']
         self.deg_normalised = args['deg_normalised']
         self.nonlinear = not args['linear']
         self.input_dropout = args['input_dropout']
         self.dropout = args['dropout']
-        self.left_weights = args['left_weights']
-        self.right_weights = args['right_weights']
+        #self.left_weights = args['left_weights']
+        #self.right_weights = args['right_weights']
         self.sparse_learner = args['sparse_learner']
         self.use_act = args['use_act']
         self.input_dim = args['input_dim']
@@ -277,11 +280,11 @@ class SheafTransformerBase(nn.Module):
         self.num_heads = args['num_heads']
         
         self.sheaf_act = args['sheaf_act']
-        self.second_linear = args['second_linear']
+        #self.second_linear = args['second_linear']
         self.orth_trans = args['orth']
         self.use_edge_weights = args['edge_weights']
-        self.t = args['max_t']
-        self.time_range = torch.tensor([0.0, self.t], device=self.device)
+        #self.t = args['max_t']
+        #self.time_range = torch.tensor([0.0, self.t], device=self.device)
         self.laplacian_builder = None
 
     def update_edge_index(self, edge_index):
@@ -340,13 +343,13 @@ class GeneralSheafTransformer(SheafTransformerBase):
             self.graph_size, edge_index, d=self.d, add_lp=self.add_lp, add_hp=self.add_hp,
             normalised=self.normalised, deg_normalised=self.deg_normalised)
 
-        self.epsilons = nn.ParameterList()
-        for i in range(self.layers):
-            self.epsilons.append(nn.Parameter(torch.zeros((self.final_d, 1))))
+        # self.epsilons = nn.ParameterList()
+        # for i in range(self.layers):
+        #     self.epsilons.append(nn.Parameter(torch.zeros((self.final_d, 1))))
 
         self.lin1 = nn.Linear(self.input_dim, self.hidden_dim)
-        if self.second_linear:
-            self.lin12 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        # if self.second_linear:
+        #     self.lin12 = nn.Linear(self.hidden_dim, self.hidden_dim)
         self.lin2 = nn.Linear(self.hidden_dim, self.output_dim)
 
     # def left_right_linear(self, x, left, right):
@@ -367,8 +370,8 @@ class GeneralSheafTransformer(SheafTransformerBase):
             x = F.elu(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
 
-        if self.second_linear:
-            x = self.lin12(x)
+        # if self.second_linear:
+        #     x = self.lin12(x)
         x = x.view(self.graph_size * self.final_d, -1)
 
         x0, L = x, None
@@ -378,8 +381,8 @@ class GeneralSheafTransformer(SheafTransformerBase):
                 maps = self.sheaf_learners[layer](x_maps.reshape(self.graph_size, -1), self.edge_index)
                 L, trans_maps = self.laplacian_builder(maps)
                 self.sheaf_learners[layer].set_L(trans_maps)
-                print(trans_maps.shape)
-                print(maps.shape)
+                #print(trans_maps.shape)
+                #print(maps.shape)
 
             x = F.dropout(x, p=self.dropout, training=self.training)
 
@@ -424,7 +427,7 @@ class GeneralSheafTransformer(SheafTransformerBase):
 
         x = x.reshape(self.graph_size, -1)
         x = self.lin2(x)
-        return F.log_softmax(x, dim=1)
+        return F.log_softmax(x, dim=1) # Return Representations (without activation) Or return softmaxed values
     
     
     

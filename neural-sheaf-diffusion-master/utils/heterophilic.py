@@ -274,7 +274,8 @@ class WebKB(InMemoryDataset):
 
 
 def get_fixed_splits(data, dataset_name, seed):
-    with np.load(f'../splits/{dataset_name}_split_0.6_0.2_{seed}.npz') as splits_file:
+    with np.load(f'/data/manasp/neural-sheaf-diffusion-master/splits/{dataset_name}_split_0.6_0.2_{seed}.npz') as splits_file:
+        #Change while running !!!!!!!!!!!!
         train_mask = splits_file['train_mask']
         val_mask = splits_file['val_mask']
         test_mask = splits_file['test_mask']
