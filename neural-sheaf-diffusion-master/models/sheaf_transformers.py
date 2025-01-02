@@ -7,16 +7,21 @@ from models import laplacian_builders as lb
 import lib.laplace as lap
 import math
 
-def sparse_kron(input: torch.Tensor, other: torch.Tensor):
+def sparse_kron(input: torch.Tensor, other: torch.Tensor,device = 'cpu'):
     
     ''' Kronecker product for two sparse matrices
     Code taken from https://github.com/pytorch/pytorch/issues/134069 . All credit to https://github.com/SnoodMcGuinness '''
     assert input.ndim == other.ndim
     input_indices = input.indices()
     other_indices = other.indices()
+    # print("Inside Sparse kron ################",input_indices.get_device())
+    # print("Inside Sparse kron ################",other_indices.get_device())
+    # print("Inside Sparse kron ################",torch.tensor(other.shape).get_device())
 
-    input_indices_expanded = input_indices.expand(other_indices.shape[1], *input_indices.shape).T * torch.tensor(other.shape).reshape(1,-1,1)
+    input_indices_expanded = input_indices.expand(other_indices.shape[1], *input_indices.shape).T * (torch.tensor(other.shape).to(device)).reshape(1,-1,1)
     other_indices_expanded = other_indices.expand(input_indices.shape[1], *other_indices.shape)
+    # print("Inside Sparse kron ################",input.values().get_device())
+    # print("Inside Sparse kron ################",other.values().get_device())
     new_indices = torch.permute(input_indices_expanded + other_indices_expanded, (1,0,2)).reshape(input.ndim,-1)
 
     new_values = torch.kron(input.values(), other.values())
@@ -26,7 +31,7 @@ def sparse_kron(input: torch.Tensor, other: torch.Tensor):
 
     new_shape = [n * m for n, m in zip(input.shape, other.shape)]
 
-    return torch.sparse_coo_tensor(new_indices, new_values, new_shape, dtype=input.dtype, device=input.device).coalesce()
+    return torch.sparse_coo_tensor(new_indices, new_values, new_shape, dtype=input.dtype, device=input.device).coalesce().to(device)
 
 
 
@@ -118,7 +123,7 @@ class SheafTransformerAttentionLayer(nn.Module):
         #return attention_matrix.coalesce(),v
 
 class SheafTransformerMultiHeadAttentionLayer(nn.Module): 
-    def __init__(self,d,graph_size ,hidden_dim,num_heads=1):
+    def __init__(self,d,graph_size ,hidden_dim,device='cpu',num_heads=1):
         super(SheafTransformerMultiHeadAttentionLayer,self).__init__()
         #ADD OTHER PARAMETERS HERE Like layer for Vq , Vk and Vv
         # ADD Sheaf Learner Too
@@ -133,6 +138,7 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
         self.v_linear = nn.Linear(self.hidden_dim,self.hidden_dim*self.num_heads ,bias = False )
 
         self.final_linear = nn.Linear(self.hidden_dim*self.num_heads ,self.hidden_dim,bias = False )
+        self.device = device
         
         
         
@@ -152,6 +158,7 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
         v = torch.cat(v.split(v.size(1)//self.num_heads,dim = 1),dim = 0) # To put the Qs,Ks and Vs of different attention heads one after the other
 
         arr = torch.arange(self.num_heads)*self.graph_size
+        arr = arr.to(self.device)
 
         arr = arr[:,None,None]
 
@@ -190,8 +197,8 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
 
         #Getting adjacency matrix from laplacian
 
-        id_idx = torch.arange(0,self.graph_size*self.d).view(1,-1).tile(2,1)
-        id_val = torch.ones((self.graph_size*self.d,))
+        id_idx = torch.arange(0,self.graph_size*self.d).view(1,-1).tile(2,1).to(self.device)
+        id_val = torch.ones((self.graph_size*self.d,)).to(self.device)
 
         # print(id_idx)
         # print(L[0].size)
@@ -203,11 +210,13 @@ class SheafTransformerMultiHeadAttentionLayer(nn.Module):
 
         adjacency_matrix = torch.sparse_coo_tensor(adjacency_matrix_idx,adjacency_matrix_val,(self.graph_size*self.d,self.graph_size*self.d)).coalesce()
 
-        sparse_identity_num_heads = torch.sparse_coo_tensor(torch.arange(0,self.num_heads).view(1,-1).tile(2,1),torch.ones((self.num_heads,)),(self.num_heads,self.num_heads)).coalesce()
+        sparse_identity_num_heads = torch.sparse_coo_tensor(torch.arange(0,self.num_heads).view(1,-1).tile(2,1),torch.ones((self.num_heads,)),(self.num_heads,self.num_heads)).coalesce().to(self.device)
+        print("###############################---",adjacency_matrix.get_device())
+        print("###############################---",sparse_identity_num_heads.get_device())
 
-        kroneckered_sheaflap = sparse_kron(sparse_identity_num_heads,adjacency_matrix)
+        kroneckered_sheaflap = sparse_kron(sparse_identity_num_heads,adjacency_matrix,self.device)
 
-        kroneckered_attention_matrix = sparse_kron(attention_matrix,torch.ones(self.d,self.d).to_sparse())
+        kroneckered_attention_matrix = sparse_kron(attention_matrix,torch.ones(self.d,self.d).to_sparse().to(self.device),self.device)
 
         #print(kroneckered_attention_matrix.size(0),kroneckered_attention_matrix.size(1))
         #print(kroneckered_sheaflap.size(0),kroneckered_sheaflap.size(1))
@@ -337,7 +346,7 @@ class GeneralSheafTransformer(SheafTransformerBase):
                 self.sheaf_learners.append(LocalConcatSheafLearner(
                     self.hidden_dim, out_shape=(self.d, self.d), sheaf_act=self.sheaf_act))
             #self.attention_layers.append(SheafTransformerAttentionLayer(d = self.d,graph_size = self.graph_size,hidden_dim = self.hidden_dim))
-            self.attention_layers.append(SheafTransformerMultiHeadAttentionLayer(d = self.d,graph_size = self.graph_size,hidden_dim = self.hidden_dim,num_heads = self.num_heads))
+            self.attention_layers.append(SheafTransformerMultiHeadAttentionLayer(d = self.d,graph_size = self.graph_size,hidden_dim = self.hidden_dim,device = self.device,num_heads = self.num_heads))
             
         self.laplacian_builder = lb.GeneralLaplacianBuilder(
             self.graph_size, edge_index, d=self.d, add_lp=self.add_lp, add_hp=self.add_hp,

@@ -7,7 +7,7 @@ python -m run \
     --dataset=texas \
     --dropout=0 \
     --early_stopping=100 \
-    --epochs=100 \
+    --epochs=1 \
     --folds=10 \
     --hidden_channels=32 \
     --input_dropout=0.7 \

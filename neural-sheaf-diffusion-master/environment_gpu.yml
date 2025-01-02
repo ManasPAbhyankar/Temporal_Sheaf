@@ -4,13 +4,13 @@ channels:
   - defaults
   - pyg
 dependencies:
-  - pip=21.3.1
-  - pyg=2.0.4
-  - cudatoolkit=11.0
-  - python=3.9.9
-  - pytorch=1.11.0
   - gcc
   - gxx
+  - pip=21.3.1
+  - python=3.9.9
+  - cudatoolkit=11.2
+  - pytorch=1.11.0=cuda112*
+  - pyg=2.0.4
   - pip:
       - tqdm==4.62.3
       - pytest==6.2.5

@@ -14,6 +14,7 @@ from ray import train as raytrain
 from ray.train import Checkpoint, get_checkpoint
 from ray.tune.schedulers import FIFOScheduler
 import ray.cloudpickle as pickle
+import ray.train.torch
 
 
 
@@ -160,6 +161,7 @@ def get_validation_accuracy(args, dataset, model_cls, fold):
     best_val_loss = float('inf')
     best_epoch = 0
     bad_counter = 0
+    test_acc = -1
 
     for epoch in range(args['epochs']):
         train(model, optimizer, data)
@@ -285,7 +287,8 @@ def run_folds(args):
     args["graph_size"] = dataset[0].x.size(0)
     args["input_dim"] = dataset.num_features
     args["output_dim"] = dataset.num_classes
-    args["device"] = torch.device(f'cuda:{args["cuda"]}' if torch.cuda.is_available() else 'cpu')
+    #args["device"] = torch.device(f'cuda:{args["cuda"]}' if torch.cuda.is_available() else 'cpu')
+    args["device"] = ray.train.torch.get_device()
     assert args["normalised"] or args["deg_normalised"]
     # if args.sheaf_decay is None:
     #     args.sheaf_decay = args.weight_decay
@@ -405,7 +408,8 @@ def get_test_accuracy(args):
     args["graph_size"] = dataset[0].x.size(0)
     args["input_dim"] = dataset.num_features
     args["output_dim"] = dataset.num_classes
-    args["device"] = torch.device(f'cuda:{args["cuda"]}' if torch.cuda.is_available() else 'cpu')
+    #args["device"] = torch.device(f'cuda:{args["cuda"]}' if torch.cuda.is_available() else 'cpu')
+    args["device"] = raytrain.torch.get_device()
     assert args["normalised"] or args["deg_normalised"]
     # if args.sheaf_decay is None:
     #     args.sheaf_decay = args.weight_decay
@@ -447,6 +451,7 @@ def get_test_accuracy(args):
     #train.report({"accuracy": val_acc_mean})
 
 
+import scipy
 
 if __name__ == '__main__':
     # parser = get_parser()
@@ -484,22 +489,22 @@ if __name__ == '__main__':
     args = {
     'add_hp':False,
     'add_lp':False,
-    'd':tune.grid_search([1,2,3,4,5]) ,
+    'd':tune.grid_search([2,3,4,5]) ,
     'dataset':'texas', 
     'dropout':0 ,
     'early_stopping':200, 
-    'epochs':500 ,
+    'epochs':1 ,
     'folds':10 ,
     'hidden_channels':tune.grid_search([8,16,32]),
-    'input_dropout':tune.log_uniform(0,0.9) ,
+    'input_dropout':tune.uniform(0,0.9) ,
     'layers':2,
     'num_attention_layers':tune.grid_search([2,3,4,5,6,7,8]),
     'num_heads':1,
     'lr':tune.grid_search([0.001,0.005,0.01,0.02]) ,
     'model':"GeneralSheafTransformer", 
     'second_linear':False,
-    'sheaf_decay':tune.log_uniform(-4.5,11.0), 
-    'weight_decay':tune.log_uniform(-4.5,11.0), 
+    'sheaf_decay':tune.sample_from(lambda _:float(np.log(scipy.stats.loguniform.rvs(np.exp(-4.5),np.exp(11.0))))), 
+    'weight_decay':tune.sample_from(lambda _:float(np.log(scipy.stats.loguniform.rvs(np.exp(-4.5),np.exp(11.0))))), 
     'left_weights':True ,
     'right_weights':True ,
     'use_act':True ,
@@ -517,7 +522,7 @@ if __name__ == '__main__':
     'entity':None,
     'min_acc':0.0,
     }
-    ray.init(runtime_env={"working_dir": "/data/manasp/neural-sheaf-diffusion-master/"})
+    ray.init(runtime_env={"working_dir": "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master"},num_gpus = 2,num_cpus=64)
 
     #scheduler = FIFOScheduler()
     # result = tune.run(
@@ -527,9 +532,9 @@ if __name__ == '__main__':
     #     num_samples=1,
     # )
     tuner=  tune.Tuner(
-        run_folds,
+        tune.with_resources(run_folds,{"gpu" : 0.1}),
         param_space=args,
-        tune_config=tune.TuneConfig(num_samples= 10,max_concurrent_trials = 1,metric = "accuracy",mode = "max")
+        tune_config=tune.TuneConfig(num_samples= 10,max_concurrent_trials = 12,metric = "accuracy",mode = "max")
     )
 
     result = tuner.fit()

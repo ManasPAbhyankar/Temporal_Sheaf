@@ -292,4 +292,3 @@ dependencies:
     - torchdiffeq==0.2.2
     - tqdm==4.62.3
     - wandb==0.13.1
-name: nsd
