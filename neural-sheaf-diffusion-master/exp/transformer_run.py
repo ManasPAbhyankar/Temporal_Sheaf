@@ -332,6 +332,8 @@ def run_folds(args):
 def get_test_accuracy(args):
     """TODO: Add Raytune hyperopt lines
        TODO: Add best model returner in folds code"""
+       
+    #tune.utils.wait_for_gpu()
     
     
     
@@ -457,60 +459,31 @@ if __name__ == '__main__':
     # parser = get_parser()
     # args = parser.parse_args()
 
-    # args = {
-    #     'hidden_channels': 5,
-    #     'device': torch.device('cpu'),
-    #     'layers': 2,
-    #     'normalised': True,
-    #     'deg_normalised': True,
-    #     'linear': False,
-    #     'input_dropout': 0.5,
-    #     'dropout': 0.5,
-    #     'left_weights': True,
-    #     'right_weights': True,
-    #     'use_act': True,
-    #     'second_linear': True,
-    #     'add_lp': True,
-    #     'add_hp': True,
-    #     'max_t': 1.0,
-    #     'sheaf_act': 'tanh',
-    #     'tol_scale': 1.0,
-    #     'int_method': 'euler',
-    #     'step_size': 0.1,
-    #     'max_iters': 100,
-    #     'tol_scale_adjoint': 1.0,
-    #     'adjoint_method': 'adaptive_heun',
-    #     'adjoint_step_size': 0.1,
-    #     'edge_weights': True,
-    #     'orth': 'householder',
-    #     'sparse_learner': False,
-    #
-
     args = {
     'add_hp':False,
     'add_lp':False,
-    'd':tune.grid_search([2,3,4,5]) ,
+    'd':6,
     'dataset':'texas', 
-    'dropout':0 ,
-    'early_stopping':200, 
-    'epochs':1 ,
+    'dropout':0.5 ,
+    'early_stopping':20,
+    'epochs':50 ,
     'folds':10 ,
-    'hidden_channels':tune.grid_search([8,16,32]),
-    'input_dropout':tune.uniform(0,0.9) ,
+    'hidden_channels':32,
+    'input_dropout':0.5,
     'layers':2,
-    'num_attention_layers':tune.grid_search([2,3,4,5,6,7,8]),
-    'num_heads':1,
-    'lr':tune.grid_search([0.001,0.005,0.01,0.02]) ,
-    'model':"GeneralSheafTransformer", 
+    'num_attention_layers':2,
+    'num_heads':2,
+    'lr':0.01,
+    'model':"GeneralSheafTransformer",
     'second_linear':False,
-    'sheaf_decay':tune.sample_from(lambda _:float(np.log(scipy.stats.loguniform.rvs(np.exp(-4.5),np.exp(11.0))))), 
-    'weight_decay':tune.sample_from(lambda _:float(np.log(scipy.stats.loguniform.rvs(np.exp(-4.5),np.exp(11.0))))), 
+    'sheaf_decay':0, 
+    'weight_decay':0, 
     'left_weights':True ,
     'right_weights':True ,
     'use_act':True ,
     'sheaf_act':"tanh",
     'normalised':True, 
-    'edge_weights':True, 
+    'edge_weights':True,
     'stop_strategy':'acc',
     'deg_normalised':False,
     'linear':False,
@@ -522,27 +495,67 @@ if __name__ == '__main__':
     'entity':None,
     'min_acc':0.0,
     }
-    ray.init(runtime_env={"working_dir": "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master"},num_gpus = 2,num_cpus=64)
+    
 
-    #scheduler = FIFOScheduler()
-    # result = tune.run(
-    #     run_folds,
-    #     resources_per_trial={"cpu": 1, "gpu": 1},
-    #     config=args,
-    #     num_samples=1,
+    # args = {
+    # 'add_hp':False,
+    # 'add_lp':False,
+    # 'd':tune.grid_search([2,3,4,5]),
+    # 'dataset':'texas', 
+    # 'dropout':tune.uniform(0,0.9),
+    # 'early_stopping':20,
+    # 'epochs':50 ,
+    # 'folds':10 ,
+    # 'hidden_channels':tune.grid_search([8,16,32]),
+    # 'input_dropout':tune.uniform(0,0.9),
+    # 'layers':2,
+    # 'num_attention_layers':tune.grid_search([2,3,4,5,6,7,8]),
+    # 'num_heads':tune.grid_search([1,2,4,8,16]),
+    # 'lr':tune.grid_search([0.01,0.02]) ,
+    # 'model':"GeneralSheafTransformer",
+    # 'second_linear':False,
+    # 'sheaf_decay':tune.sample_from(lambda _:float(np.exp(scipy.stats.uniform.rvs(-14.5,15.5)))), 
+    # 'weight_decay':tune.sample_from(lambda _:float(np.exp(scipy.stats.uniform.rvs(-14.5,15.5)))), 
+    # 'left_weights':True ,
+    # 'right_weights':True ,
+    # 'use_act':True ,
+    # 'sheaf_act':"tanh",
+    # 'normalised':True, 
+    # 'edge_weights':True,
+    # 'stop_strategy':'acc',
+    # 'deg_normalised':False,
+    # 'linear':False,
+    # 'orth':'householder',
+    # 'sparse_learner':False,
+    # 'seed':43,
+    # 'cuda':0,
+    # 'evectors':0,
+    # 'entity':None,
+    # 'min_acc':0.0,
+    # }
+    # ray.init(runtime_env={"working_dir": "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master"},num_gpus = 2,num_cpus=64)
+
+    # #scheduler = FIFOScheduler()
+    # # result = tune.run(
+    # #     run_folds,
+    # #     resources_per_trial={"cpu": 1, "gpu": 1},
+    # #     config=args,
+    # #     num_samples=1,
+    # # )
+    # tuner=  tune.Tuner(
+    #     tune.with_resources(run_folds,{"gpu" : 0.1}),
+    #     param_space=args,
+    #     tune_config=tune.TuneConfig(num_samples= 10,max_concurrent_trials = 15,metric = "accuracy",mode = "max"),
+    #     run_config = raytrain.RunConfig(failure_config = raytrain.FailureConfig(max_failures = 10))
     # )
-    tuner=  tune.Tuner(
-        tune.with_resources(run_folds,{"gpu" : 0.1}),
-        param_space=args,
-        tune_config=tune.TuneConfig(num_samples= 10,max_concurrent_trials = 12,metric = "accuracy",mode = "max")
-    )
 
-    result = tuner.fit()
-    best_trial = result.get_best_result()
+    # result = tuner.fit()
+    # best_trial = result.get_best_result()
 
-    print(f"Best trial config: {best_trial.config}")
+    # print(f"Best trial config: {best_trial.config}")
 
-    get_test_accuracy(best_trial.config)
+    # get_test_accuracy(best_trial.config)
+    get_test_accuracy(args)
 
 
     
