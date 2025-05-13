@@ -138,6 +138,8 @@ class WikipediaNetwork(InMemoryDataset):
             being saved to disk. (default: :obj:`None`)
 
     """
+    processed_url = ('https://raw.githubusercontent.com/graphdml-uiuc-jlu/'
+                     'geom-gcn/f1fc0d14b3b019c562737240d06ec83b07d16a8f')
 
     def __init__(self, root: str, name: str,
                  transform: Optional[Callable] = None,
@@ -145,6 +147,7 @@ class WikipediaNetwork(InMemoryDataset):
         self.name = name.lower()
         assert self.name in ['chameleon', 'squirrel']
         super().__init__(root, transform, pre_transform)
+
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -164,7 +167,12 @@ class WikipediaNetwork(InMemoryDataset):
         return 'data.pt'
 
     def download(self):
-        pass
+        for filename in self.raw_file_names[:2]:
+            url = f'{self.processed_url}/new_data/{self.name}/{filename}'
+            download_url(url, self.raw_dir)
+        for filename in self.raw_file_names[2:]:
+            url = f'{self.processed_url}/splits/{filename}'
+            download_url(url, self.raw_dir)
 
     def process(self):
         with open(self.raw_paths[0], 'r') as f:

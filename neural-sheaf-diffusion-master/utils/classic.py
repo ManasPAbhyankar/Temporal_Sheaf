@@ -10,13 +10,15 @@ import scipy.sparse as sp
 import os.path as osp
 
 from typing import Optional, Callable, List
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import InMemoryDataset, Data, download_url
 from torch_sparse import coalesce
 from torch_geometric.utils.undirected import to_undirected
 from torch_geometric.utils import remove_self_loops
 
 
 class Planetoid(InMemoryDataset):
+
+    url = 'https://github.com/kimiyoung/planetoid/raw/master/data'
 
     def __init__(self, root: str, name: str,
                  transform: Optional[Callable] = None,
@@ -47,7 +49,8 @@ class Planetoid(InMemoryDataset):
         return 'data.pt'
 
     def download(self):
-        pass
+        for name in self.raw_file_names:
+            download_url(f'{self.url}/{name}', self.raw_dir)
 
     def process(self):
         data = full_load_citation(self.name, self.raw_dir)

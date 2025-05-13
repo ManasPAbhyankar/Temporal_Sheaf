@@ -140,11 +140,86 @@ class DiagLaplacianBuilder(LaplacianBuilder):
         left_idx, right_idx = self.left_right_idx
         tril_row, tril_col = self.vertex_tril_idx
         row, _ = self.edge_index
-
         # Compute the un-normalised Laplacian entries.
         left_maps = torch.index_select(maps, index=left_idx, dim=0)
         right_maps = torch.index_select(maps, index=right_idx, dim=0)
         tril_maps = -left_maps * right_maps
+        saved_tril_maps = tril_maps.detach().clone()
+        diag_maps = scatter_add(maps**2, row, dim=0, dim_size=self.size)
+
+        # Normalise the entries if the normalised Laplacian is used.
+        diag_maps, tril_maps = self.normalise(diag_maps, tril_maps, tril_row, tril_col)
+        tril_indices, diag_indices = self.tril_indices, self.diag_indices
+        tril_maps, diag_maps = tril_maps.view(-1), diag_maps.view(-1)
+
+        # Append fixed diagonal values in the non-learnable dimensions.
+        (diag_indices, diag_maps), (tril_indices, tril_maps) = self.append_fixed_maps(
+            len(left_maps), diag_indices, diag_maps, tril_indices, tril_maps)
+
+        # Add the upper triangular part
+        triu_indices = torch.empty_like(tril_indices)
+        triu_indices[0], triu_indices[1] = tril_indices[1], tril_indices[0]
+        non_diag_indices, non_diag_values = lap.mergesp(tril_indices, tril_maps, triu_indices, tril_maps)
+
+        # Merge diagonal and non-diagonal
+        edge_index, weights = lap.mergesp(non_diag_indices, non_diag_values, diag_indices, diag_maps)
+
+        return (edge_index, weights), saved_tril_maps
+
+
+
+
+class AttentionDiagAdjacencyBuilder(LaplacianBuilder):
+    """Learns a a Sheaf Laplacian with diagonal restriction maps"""
+
+    def __init__(self, size, edge_index, d, normalised=False, deg_normalised=False, add_hp=False, add_lp=False,
+                 augmented=True):
+        super(AttentionDiagLaplacianBuilder, self).__init__(
+            size, edge_index, d, normalised, deg_normalised, add_hp, add_lp, augmented)
+
+        self.diag_indices, self.tril_indices = lap.compute_learnable_diag_laplacian_indices(
+            size, self.vertex_tril_idx, self.d, self.final_d)
+
+    def normalise(self, diag, tril, row, col):
+        if self.normalised:
+            d_sqrt_inv = (diag + 1).pow(-0.5) if self.augmented else diag.pow(-0.5)
+            left_norm, right_norm = d_sqrt_inv[row], d_sqrt_inv[col]
+            tril = left_norm * tril * right_norm
+            diag = d_sqrt_inv * diag * d_sqrt_inv
+        elif self.deg_normalised:
+            deg_sqrt_inv = (self.deg + 1).pow(-0.5) if self.augmented else self.deg.pow(-0.5)
+            deg_sqrt_inv = deg_sqrt_inv.unsqueeze(-1)
+            deg_sqrt_inv.masked_fill_(deg_sqrt_inv == float('inf'), 0)
+            left_norm, right_norm = deg_sqrt_inv[row], deg_sqrt_inv[col]
+            tril = left_norm * tril * right_norm
+            diag = deg_sqrt_inv * diag * deg_sqrt_inv
+        return diag, tril
+
+    def forward(self, maps,attention_matrix):
+        assert len(maps.size()) == 2
+        assert maps.size(1) == self.d
+        left_idx, right_idx = self.full_left_right_idx
+        tril_row, tril_col = self.vertex_tril_idx
+        row, _ = self.edge_index
+
+
+        """Use full left_right index and calculate all maps....diag maps left the same...... Multiply attention matrix
+        and send for normalisation ..... Change normalisation function so that it works with non symmetric matrices"""
+
+
+
+        """Due to multi head attention , we have to normalise the kroneckered adjacency matrix multiplied by attention matrix here itself
+         Find out a way to do so
+        
+        
+        ROUGH METHOD : Get the sparse adjacency matrix and hadamard multiply it with the attention matrix....
+        Then try to find the diagonal maps from that (Preferably create diag maps the same way they are made here,
+        and multiply with attention coefficients).... 
+        Once you get them ... Find new ro,col values similar to that in multiheadattn and proceed."""
+        # Compute the un-normalised Laplacian entries.
+        left_maps = torch.index_select(maps, index=left_idx, dim=0)
+        right_maps = torch.index_select(maps, index=right_idx, dim=0)
+        adj_maps = left_maps * right_maps
         saved_tril_maps = tril_maps.detach().clone()
         diag_maps = scatter_add(maps**2, row, dim=0, dim_size=self.size)
 
