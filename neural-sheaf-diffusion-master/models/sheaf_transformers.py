@@ -1360,3 +1360,146 @@ class OrthSheafTransformerV2(SheafTransformerBase):
         x = x.reshape(self.graph_size, -1)
         x = self.lin2(x)
         return F.log_softmax(x, dim=1) # Return Representations (without activation) Or return softmaxed values
+
+
+
+class TrivialSheafTransformerV2(SheafTransformerBase):
+
+    def __init__(self, edge_index, args):
+        super(TrivialSheafTransformerV2, self).__init__(edge_index, args)
+        assert args['d'] == 1
+
+        #self.lin_right_weights = nn.ModuleList()
+        #self.lin_left_weights = nn.ModuleList()
+
+        # if self.right_weights:
+        #     for i in range(self.layers):
+        #         self.lin_right_weights.append(nn.Linear(self.hidden_channels, self.hidden_channels, bias=False))
+        #         nn.init.orthogonal_(self.lin_right_weights[-1].weight.data)
+        # if self.left_weights:
+        #     for i in range(self.layers):
+        #         self.lin_left_weights.append(nn.Linear(self.final_d, self.final_d, bias=False))
+        #         nn.init.eye_(self.lin_left_weights[-1].weight.data)
+
+        self.sheaf_learners = nn.ModuleList()
+        self.attention_layers = nn.ModuleList()
+
+        #num_attention_learners = min(self.layers, self.layers if self.nonlinear else 1)
+        for i in range(self.num_attention_layers):
+            if self.sparse_learner:
+                self.sheaf_learners.append(LocalConcatSheafLearnerVariant(self.final_d,
+                    self.hidden_channels, (self.d,), sheaf_act=self.sheaf_act))
+            else:
+                self.sheaf_learners.append(LocalConcatSheafLearner(
+                    self.hidden_dim, (self.d,), sheaf_act=self.sheaf_act))
+            #self.attention_layers.append(SheafTransformerAttentionLayer(d = self.d,graph_size = self.graph_size,hidden_dim = self.hidden_dim))
+            # self.attention_layers.append(SheafTransformerMultiHeadAttentionLayer(d = self.d,graph_size = self.graph_size,hidden_dim = self.hidden_dim,device = self.device,num_heads = self.num_heads))
+            self.attention_layers.append(SheafTransformerMultiHeadAttentionLayerV3(d = self.final_d,graph_size = self.graph_size,hidden_dim = self.hidden_dim,device = self.device,num_heads = self.num_heads))
+            
+        self.laplacian_builder = lb.DiagLaplacianBuilder(
+            self.graph_size, edge_index, d=self.d, add_lp=self.add_lp, add_hp=self.add_hp,
+            normalised=self.normalised, deg_normalised=self.deg_normalised)
+
+        # self.epsilons = nn.ParameterList()
+        # for i in range(self.layers):
+        #     self.epsilons.append(nn.Parameter(torch.zeros((self.final_d, 1))))
+
+        self.lin1 = nn.Linear(self.input_dim, self.hidden_dim)
+        # if self.second_linear:
+        #     self.lin12 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.lin2 = nn.Linear(self.hidden_dim, self.output_dim)
+
+    # def left_right_linear(self, x, left, right):
+    #     if self.left_weights:
+    #         x = x.t().reshape(-1, self.final_d)
+    #         x = left(x)
+    #         x = x.reshape(-1, self.graph_size * self.final_d).t()
+
+    #     if self.right_weights:
+    #         x = right(x)
+
+    #     return x
+
+    def forward(self, x):
+        x = F.dropout(x, p=self.input_dropout, training=self.training)
+        x = self.lin1(x)
+        if self.use_act:
+            x = F.elu(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
+
+        # if self.second_linear:
+        #     x = self.lin12(x)
+        x = x.view(self.graph_size * self.final_d, -1)
+
+        x0, L = x, None
+        for layer in range(self.num_attention_layers):
+            if layer == 0 or self.nonlinear:
+                x_maps = F.dropout(x, p=self.dropout if layer > 0 else 0., training=self.training)
+                #maps = self.sheaf_learners[layer](x_maps.reshape(self.graph_size, -1), self.edge_index)
+                #print("MAPSIZE::",maps.shape)
+                maps = torch.ones(size = (self.edge_index.shape[1],1)).to(self.device) #Setting maps to identity
+
+                # print("Maps:",maps.clone().detach())
+                L, trans_maps = self.laplacian_builder(maps)
+                self.sheaf_learners[layer].set_L(trans_maps)
+                #print(trans_maps.shape)
+                #print(maps.shape)
+
+            x = F.dropout(x, p=self.dropout, training=self.training)
+
+            #x = self.left_right_linear(x, self.lin_left_weights[layer], self.lin_right_weights[layer])
+            
+            
+            
+            '''#Here do the attention matrix and V thing, will take some time to formulate in terms of pytorch functions
+            # Use the adjacency matrix rather than the diagonal'''
+            
+            
+            '''Getting (sparse) attention matrix and V values'''
+
+            x = x.reshape(-1,self.hidden_dim)
+            
+            x = self.attention_layers[layer](x, self.edge_index, L)
+
+            
+            #x = x.to_dense()
+            '''scipy sparse kron can be used BUT backprop is gone'''
+            '''
+            Take this link for sparse kronecker : https://github.com/pytorch/pytorch/issues/134069 (Look at last post)
+            '''
+            
+            
+            '''Residual term has to be created ........... Check the equation'''
+            
+            
+            
+            
+            
+            #x = torch_sparse.spmm(L[0], L[1], x.size(0), x.size(0), x)
+
+            if self.use_act:
+                x = F.elu(x)
+            
+            # coeff = (1 + torch.tanh(self.epsilons[layer]).tile(self.graph_size, 1))
+
+            if self.use_residual:
+                x = x0 + x #Adding residual term
+            #x = x0
+
+        # To detect the numerical instabilities of SVD.
+        assert torch.all(torch.isfinite(x))
+
+        x = x.reshape(self.graph_size, -1)
+        x = self.lin2(x)
+        return F.log_softmax(x, dim=1) # Return Representations (without activation) Or return softmaxed values
+    
+    '''
+    
+    TODO : Complete the General sheaf transformer end - to end , and verify that it runs correctly (Working correctly for one epoch)
+    TODO: Add MultiHead Attention and verify its working(Done)
+    TODO : Put hyperparameter tuning, and test it on a concrete dataset
+    TODO : Adapt the General Sheaf transformer to Diagonal and Discrete Bundles by chaging relevant lines
+
+    TODO:Implement GATv2 (Add a linear layer after ELU activation basically ...... )
+    
+    '''

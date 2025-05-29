@@ -1,0 +1,21 @@
+Failure # 1 (occurred at 2025-05-23_02-29-48)
+[36mray::ImplicitFunc.train()[39m (pid=574761, ip=10.33.34.56, actor_id=b8d23e7025c92d84417cb79a01000000, repr=run_folds)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/trainable.py", line 331, in train
+    raise skipped from exception_cause(skipped)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/air/_internal/util.py", line 107, in run
+    self._ret = self._target(*self._args, **self._kwargs)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/function_trainable.py", line 45, in <lambda>
+    training_func=lambda: self._trainable_func(self.config),
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/function_trainable.py", line 250, in _trainable_func
+    output = fn()
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 378, in run_folds
+    returned_model,test_acc, best_val_acc, keep_running = get_validation_accuracy(args, dataset, model_cls, fold)
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 192, in get_validation_accuracy
+    train_loss, val_loss, tmp_test_loss] = test(model, data)
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 67, in test
+    logits, accs, losses, preds = model(data.x), [], [], []
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/tmp/ray/session_2025-05-22_23-08-59_159087_537226/runtime_resources/working_dir_files/_ray_pkg_d7b6f4ed9c102368/models/sheaf_transformers.py", line 1358, in forward
+    assert torch.all(torch.isfinite(x))
+AssertionError

@@ -1,0 +1,50 @@
+Failure # 1 (occurred at 2025-05-23_11-25-30)
+[36mray::ImplicitFunc.train()[39m (pid=594655, ip=10.33.34.56, actor_id=56a19388b83d65fb2b48dde801000000, repr=run_folds)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/trainable.py", line 331, in train
+    raise skipped from exception_cause(skipped)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/air/_internal/util.py", line 107, in run
+    self._ret = self._target(*self._args, **self._kwargs)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/function_trainable.py", line 45, in <lambda>
+    training_func=lambda: self._trainable_func(self.config),
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/function_trainable.py", line 250, in _trainable_func
+    output = fn()
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 378, in run_folds
+    returned_model,test_acc, best_val_acc, keep_running = get_validation_accuracy(args, dataset, model_cls, fold)
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 189, in get_validation_accuracy
+    train(model, optimizer, data)
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 55, in train
+    out = model(data.x)[data.train_mask]
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/tmp/ray/session_2025-05-22_23-08-59_159087_537226/runtime_resources/working_dir_files/_ray_pkg_d7b6f4ed9c102368/models/sheaf_transformers.py", line 1330, in forward
+    x = self.attention_layers[layer](x, self.edge_index, L)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/tmp/ray/session_2025-05-22_23-08-59_159087_537226/runtime_resources/working_dir_files/_ray_pkg_d7b6f4ed9c102368/models/sheaf_transformers.py", line 632, in forward
+    dense_attention_matrix = attention_matrix.to_dense()
+RuntimeError: CUDA out of memory. Tried to allocate 10.56 GiB (GPU 0; 47.45 GiB total capacity; 1.85 GiB already allocated; 10.07 GiB free; 12.65 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
+Failure # 2 (occurred at 2025-05-23_11-37-19)
+[36mray::ImplicitFunc.train()[39m (pid=595063, ip=10.33.34.56, actor_id=d4900b96ba67704dae4ea59501000000, repr=run_folds)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/trainable.py", line 331, in train
+    raise skipped from exception_cause(skipped)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/air/_internal/util.py", line 107, in run
+    self._ret = self._target(*self._args, **self._kwargs)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/function_trainable.py", line 45, in <lambda>
+    training_func=lambda: self._trainable_func(self.config),
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/ray/tune/trainable/function_trainable.py", line 250, in _trainable_func
+    output = fn()
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 378, in run_folds
+    returned_model,test_acc, best_val_acc, keep_running = get_validation_accuracy(args, dataset, model_cls, fold)
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 189, in get_validation_accuracy
+    train(model, optimizer, data)
+  File "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/transformer_run.py", line 55, in train
+    out = model(data.x)[data.train_mask]
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/tmp/ray/session_2025-05-22_23-08-59_159087_537226/runtime_resources/working_dir_files/_ray_pkg_d7b6f4ed9c102368/models/sheaf_transformers.py", line 1330, in forward
+    x = self.attention_layers[layer](x, self.edge_index, L)
+  File "/home/manas/miniconda3/envs/nsd/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1110, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/tmp/ray/session_2025-05-22_23-08-59_159087_537226/runtime_resources/working_dir_files/_ray_pkg_d7b6f4ed9c102368/models/sheaf_transformers.py", line 632, in forward
+    dense_attention_matrix = attention_matrix.to_dense()
+RuntimeError: CUDA out of memory. Tried to allocate 10.56 GiB (GPU 0; 47.45 GiB total capacity; 1.85 GiB already allocated; 10.07 GiB free; 12.65 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF

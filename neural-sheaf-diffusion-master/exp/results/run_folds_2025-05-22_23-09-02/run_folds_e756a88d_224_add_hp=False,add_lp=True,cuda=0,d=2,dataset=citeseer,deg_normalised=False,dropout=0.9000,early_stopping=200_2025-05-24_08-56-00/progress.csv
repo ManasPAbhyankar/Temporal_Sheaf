@@ -1,0 +1,2 @@
+accuracy,test_accuracy,test_std,timestamp,checkpoint_dir_name,done,training_iteration,trial_id,date,time_this_iter_s,time_total_s,pid,hostname,node_ip,time_since_restore,iterations_since_restore
+27.487607606521387,26.56692485549388,3.3442601601338704,1748065587,,False,1,e756a88d,2025-05-24_11-16-27,3381.599535703659,3381.599535703659,639784,csp-ws,10.33.34.56,3381.599535703659,1

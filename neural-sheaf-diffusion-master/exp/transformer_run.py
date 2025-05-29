@@ -585,13 +585,13 @@ if __name__ == '__main__':
     args = {
     'add_hp':tune.choice([True,False]),
     'add_lp':tune.choice([True,False]),
-    'd':tune.choice([2,3,4]),   # 2-7
-    'dataset':'texas', 
+    'd':tune.choice([2,3,4,5,6]),   # 2-7
+    'dataset':'citeseer', 
     'dropout':tune.choice([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]),
     'early_stopping':200,
-    'epochs':1500,
+    'epochs':1000,
     'folds':10 ,
-    'hidden_channels':tune.choice([8,16,32]),
+    'hidden_channels':tune.choice([8,16,32,64]),
     'input_dropout':tune.choice([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]),
     'layers':2,
     'num_attention_layers':tune.choice([2,3,4,5,6,7,8]),
@@ -638,10 +638,10 @@ if __name__ == '__main__':
     #                                     checkpoint_config = raytrain.CheckpointConfig(num_to_keep= 1, checkpoint_score_attribute = "accuracy", checkpoint_score_order = "max"))
     # )
 
-    METRIC_TO_SEARCH = 'test_accuracy'
+    METRIC_TO_SEARCH = 'accuracy'
     
     hyperopt_search = tune.search.hyperopt.HyperOptSearch(metric=METRIC_TO_SEARCH, mode="max",)
-    hyperopt_search = HyperOptSearch(n_initial_points=100)
+    hyperopt_search = HyperOptSearch(n_initial_points=300)
     
     # tuner=  tune.Tuner(
     #     tune.with_resources(run_folds,{"gpu" : 0.2}),
@@ -653,9 +653,9 @@ if __name__ == '__main__':
     # )
 
     tuner=  tune.Tuner(
-        tune.with_resources(run_folds,{"gpu" : 0.2}),
+        tune.with_resources(run_folds,{"gpu" : 0.5}),
         param_space=args,
-        tune_config=tune.TuneConfig(num_samples=1000,max_concurrent_trials = 10,metric = METRIC_TO_SEARCH,mode = "max",search_alg = hyperopt_search),
+        tune_config=tune.TuneConfig(num_samples=2000,max_concurrent_trials = 10,metric = METRIC_TO_SEARCH,mode = "max",search_alg = hyperopt_search),
         run_config = raytrain.RunConfig(failure_config = raytrain.FailureConfig(max_failures = 10),
                                         storage_path = "/home/manas/Temporal_Sheaf/neural-sheaf-diffusion-master/exp/results")
     )
