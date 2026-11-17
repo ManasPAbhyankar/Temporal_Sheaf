@@ -1,6 +1,8 @@
 [![example workflow](https://github.com/twitter-research/neural-sheaf-diffusion/actions/workflows/python-tests.yml/badge.svg)](https://github.com/twitter-research/neural-sheaf-diffusion/actions) 
 [![License: MIT](https://img.shields.io/badge/License-Apache%202-green.svg)](https://github.com/twitter-research/neural-sheaf-diffusion/blob/main/LICENSE)
+#Sheaf Transformers
 
+This is the backup repo for the sheaf transformers project. The code was taken from the Neural Sheaf Diffusion paper, whose repo's readme is what starts below.
 # Neural Sheaf Diffusion
 
 This repository contains the official code for the paper 
